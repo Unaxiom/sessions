@@ -1,6 +1,8 @@
 package sessions
 
 import (
+	"time"
+
 	"github.com/Unaxiom/ulogger"
 	"gopkg.in/jackc/pgx.v2"
 )
@@ -27,7 +29,9 @@ type Session struct {
 	// ExpiryIn stores the number of seconds after which this session will expire
 	ExpiryIn int64 `json:"expiry_in,omitempty"`
 	// ExpiresAt stores the timestamp (with full timezone) at which this session will expire
-	ExpiresAt string `json:"expires_at,omitempty"`
+	ExpiresAt time.Time `json:"expires_at,omitempty"`
 	// IP stores the IP address of the client requesting a new session
 	IP string `json:"ip,omitempty"`
+	// Timestamp stores the timestamp in epoch secs when this entry was created
+	Timestamp int64 `json:"timestamp,omitempty"`
 }
