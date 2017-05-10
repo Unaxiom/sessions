@@ -16,14 +16,38 @@ func Setup(dbParent *pgx.ConnPool, logParent *ulogger.Logger) {
 	db = dbParent
 	log = logParent
 	// Fetch all the active sessions here
+	allSessions, err := FetchAllSessions()
+	if err != nil {
+		log.Errorln("While trying to fetch all sessions during Setup, error is ", err)
+	}
 
 	// Calculate the expiry timers and delete the sessions accordingly
+	for _, session := range allSessions {
+		go func() {
+			<-time.After(time.Second * time.Duration(session.ExpiryIn))
+			go DeleteSession(session.Value)
+		}()
+	}
 }
 
 // FetchAllSessions returns all the live sessions.
-func FetchAllSessions() []Session {
+func FetchAllSessions() ([]Session, error) {
 	allSessions := make([]Session, 0)
-	return allSessions
+	rows, err := db.Query(`
+		SELECT id, key, value, expires_at, ip, timestamp FROM sessions WHERE active = True
+	`)
+	defer rows.Close()
+	if err != nil {
+		log.Errorln("While trying to fetch all sessions in FetchAllSessions, error is ", err)
+		return allSessions, err
+	}
+	for rows.Next() {
+		var session Session
+		rows.Scan(&session.ID, &session.Key, &session.Value, &session.ExpiresAt, &session.IP, &session.Timestamp)
+		session.ExpiryIn = calculateExpiresIn(session.ExpiresAt)
+		allSessions = append(allSessions, session)
+	}
+	return allSessions, nil
 }
 
 // NewSession accepts the key to encode, along with the client's IP Address, inserts into the sessions table, sets the delete session timer, and returns a Session struct.
@@ -42,14 +66,27 @@ func NewSession(key string, ipAddress string) Session {
 
 }
 
-// DeleteSession deletes the session with the specific sessionID and returns an error, if any.
-func DeleteSession(sessionID int64) error {
+// CheckStatus accepts a session value, and returns the session object, along with an error, if any
+func CheckStatus(sessionValue string) (Session, error) {
+	var session Session
+	err := db.QueryRow(`
+		SELECT id, key, value, expires_at, ip, timestamp FROM sessions WHERE value = $1 AND active = True
+	`, sessionValue).Scan(&session.ID, &session.Key, &session.Value, &session.ExpiresAt, &session.IP, &session.Timestamp)
+	if err != nil {
+		return session, err
+	}
+	session.ExpiryIn = calculateExpiresIn(session.ExpiresAt)
+	return session, nil
+}
+
+// DeleteSession deletes the session with the specific sessionValue and returns an error, if any.
+func DeleteSession(sessionValue string) error {
 	tx, _ := db.Begin()
 	defer tx.Rollback()
 
 	_, err := tx.Exec(`
-		DELETE FROM sessions WHERE id = $1
-	`, sessionID)
+		UPDATE sessions SET active = False WHERE value = $1
+	`, sessionValue)
 	if err != nil {
 		tx.Rollback()
 		log.Errorln("While deleting a session, error is ", err)
@@ -68,5 +105,8 @@ func DeleteSession(sessionID int64) error {
 // calculateExpiresIn calculates the time after which a session needs to be deleted, from its full-timezone timestamp.
 func calculateExpiresIn(expiresAt time.Time) int64 {
 	var expiresIn int64
+	// Calculate the current time in the specified timezone
+	// Find the difference between expiredAt and the current time
+	// Find the difference in seconds and return the value
 	return expiresIn
 }
