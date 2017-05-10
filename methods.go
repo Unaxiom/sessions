@@ -10,16 +10,20 @@ func TableSessions(tx *pgx.Tx, defaultSchema string, database string) *schemamag
 	/*
 		CREATE TABLE sessions (
 			id bigserial UNIQUE PRIMARY KEY,
-			name text NOT NULL, -- stores the name of the holiday
-			holiday_date date NOT NULL, -- stores the date of the holiday
+			key text NOT NULL, -- stores the session key
+			value text UNIQUE NOT NULL, -- stores the generated session value, in response to the session key
+			expires_at timestamp with timezone NOT NULL, -- stores the time when this session will expire
+			ip text NOT NULL, -- stores the ip address of the client
 			active bool DEFAULT true,
 			timestamp bigint DEFAULT EXTRACT(EPOCH FROM NOW())::bigint
 		)
 	*/
 	table := schemamagic.NewTable(schemamagic.Table{Name: "sessions", DefaultSchema: defaultSchema, Database: database, Tx: tx})
 	table.Append(schemamagic.NewColumn(schemamagic.Column{Name: "id", Datatype: "bigserial", IsPrimary: true, IsUnique: true}))
-	table.Append(schemamagic.NewColumn(schemamagic.Column{Name: "name", Datatype: "text", IsNotNull: true}))
-	table.Append(schemamagic.NewColumn(schemamagic.Column{Name: "holiday_date", Datatype: "date", IsNotNull: true}))
+	table.Append(schemamagic.NewColumn(schemamagic.Column{Name: "key", Datatype: "text", IsNotNull: true}))
+	table.Append(schemamagic.NewColumn(schemamagic.Column{Name: "value", Datatype: "text", IsNotNull: true, IsUnique: true}))
+	table.Append(schemamagic.NewColumn(schemamagic.Column{Name: "expires_at", Datatype: "timestamp", IsNotNull: true, PseudoDatatype: "timestamp with time zone"}))
+	table.Append(schemamagic.NewColumn(schemamagic.Column{Name: "ip", Datatype: "text", IsNotNull: true}))
 	table.Append(schemamagic.NewColumn(schemamagic.Column{Name: "active", Datatype: "boolean", DefaultExists: true, DefaultValue: "true"}))
 	table.Append(schemamagic.NewColumn(schemamagic.Column{Name: "timestamp", Datatype: "bigint", DefaultExists: true, DefaultValue: "date_part('epoch'::text, now())::bigint"}))
 	return table
