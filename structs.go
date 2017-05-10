@@ -16,9 +16,13 @@ var log *ulogger.Logger
 // sessionExpiryTime stores the time after which a session needs to be cleared
 var sessionExpiryTime = int64(86400)
 
-// sessionTimezone stores the timezone that needs to be followed
-var sessionTimezone = ""
+// sessionTimezoneName stores the timezone that needs to be followed
+var sessionTimezoneName = "UTC"
 
+// timezoneLocation stores the time zone w.r.t. the sessionTimeZoneName
+var timezoneLocation *time.Location
+
+// Session stores the parameters in the sessions table
 type Session struct {
 	// ID stores the bigserial (PostgreSQL row id) associated with this session
 	ID int64 `json:"id,omitempty"`
