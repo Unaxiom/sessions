@@ -13,11 +13,11 @@ var db *pgx.ConnPool
 // log holds the same logger that the parent app uses
 var log *ulogger.Logger
 
-// DefaultExpiryTime stores the time after which a session needs to be cleared
-var DefaultExpiryTime = 86400
+// sessionExpiryTime stores the time after which a session needs to be cleared
+var sessionExpiryTime = int64(86400)
 
-// Timezone stores the timezone that needs to be followed
-var Timezone = ""
+// sessionTimezone stores the timezone that needs to be followed
+var sessionTimezone = ""
 
 type Session struct {
 	// ID stores the bigserial (PostgreSQL row id) associated with this session

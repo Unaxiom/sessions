@@ -11,10 +11,16 @@ func init() {
 
 }
 
-// Setup accepts a db conn pool, and a ulogger instance and sets up the required variables. It also starts the expiry timers of existing sessions.
-func Setup(dbParent *pgx.ConnPool, logParent *ulogger.Logger) {
+// Setup accepts a db conn pool, a ulogger instance, number of seconds after which the session expires (if set to 0, default value of 86400 is used), the timezone (if set to "", default timezone - UTC is used), and sets up the required variables. It also starts the expiry timers of existing sessions.
+func Setup(dbParent *pgx.ConnPool, logParent *ulogger.Logger, sessionExpiresInSecs int64, sessionLocalTimezone string) {
 	db = dbParent
 	log = logParent
+	if sessionExpiresInSecs != 0 {
+		sessionExpiryTime = sessionExpiresInSecs
+	}
+	if sessionLocalTimezone != "" {
+		sessionTimezone = sessionLocalTimezone
+	}
 	// Fetch all the active sessions here
 	allSessions, err := FetchAllSessions()
 	if err != nil {
