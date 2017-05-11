@@ -5,6 +5,8 @@ import (
 
 	"crypto/sha256"
 
+	"fmt"
+
 	"github.com/Unaxiom/ulogger"
 	"github.com/twinj/uuid"
 	"gopkg.in/jackc/pgx.v2"
@@ -165,5 +167,5 @@ func calculateExpiresIn(expiresAt time.Time) int64 {
 func calculateHash(key string, ipAddress string) string {
 	h := sha256.New()
 	h.Write([]byte(key + uuid.NewV4().String() + ipAddress))
-	return string(h.Sum(nil))
+	return fmt.Sprintf("%x", h.Sum(nil))
 }
