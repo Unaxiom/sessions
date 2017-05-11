@@ -70,6 +70,19 @@ func FetchAllSessions() ([]Session, error) {
 	return allSessions, nil
 }
 
+// FetchSessionData returns the data of the particular session token
+func FetchSessionData(session Session) (Session, error) {
+	err := db.QueryRow(`
+		SELECT id, key, token, expires_at, ip, active, timestamp FROM sessions WHERE token = $1
+	`, session.Token).Scan(&session.ID, &session.Key, &session.Token, &session.ExpiresAt, &session.IP, &session.Active, &session.Timestamp)
+	if err != nil {
+		log.Errorln("While fetching individual session data with token --> ", session.Token, " error is ", err)
+		return session, err
+	}
+	session.ExpiryIn = calculateExpiresIn(session.ExpiresAt)
+	return session, nil
+}
+
 // NewSession accepts the key to encode, along with the client's IP Address, inserts into the sessions table, sets the delete session timer, and returns a Session struct.
 func NewSession(key string, ipAddress string) (Session, error) {
 	var assignedSession Session
@@ -160,7 +173,11 @@ func calculateExpiresIn(expiresAt time.Time) int64 {
 	// difference := expiresAt.Sub(time.Now().In(timezoneLocation))
 	// Find the difference in seconds and return the value
 	// return expiresIn
-	return int64(expiresAt.Sub(time.Now().In(timezoneLocation))) / (1000 * 1000 * 1000)
+	// log.Infoln("Expires At timezone is ", expiresAt.Location().String(), " and timezoneLocation is ", timezoneLocation.String())
+	// zone, offset := expiresAt.Zone()
+	// log.Infoln("Zone is ", zone, " and offset is ", offset)
+	// return int64(expiresAt.Sub(time.Now().In(timezoneLocation))) / (1000 * 1000 * 1000)
+	return int64(expiresAt.Sub(time.Now())) / (1000 * 1000 * 1000)
 }
 
 // calculateHash accepts the key, and the ip address of the client, and generates an SHA
