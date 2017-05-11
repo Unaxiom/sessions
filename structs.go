@@ -36,6 +36,8 @@ type Session struct {
 	ExpiresAt time.Time `json:"expires_at,omitempty"`
 	// IP stores the IP address of the client requesting a new session
 	IP string `json:"ip,omitempty"`
+	// Active stores whether this session is active
+	Active bool `json:"active,omitempty"`
 	// Timestamp stores the timestamp in epoch secs when this entry was created
 	Timestamp int64 `json:"timestamp,omitempty"`
 }
