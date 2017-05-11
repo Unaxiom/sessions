@@ -22,7 +22,7 @@ func TableSessions(tx *pgx.Tx, defaultSchema string, database string) *schemamag
 	table.Append(schemamagic.NewColumn(schemamagic.Column{Name: "id", Datatype: "bigserial", IsPrimary: true, IsUnique: true}))
 	table.Append(schemamagic.NewColumn(schemamagic.Column{Name: "key", Datatype: "text", IsNotNull: true}))
 	table.Append(schemamagic.NewColumn(schemamagic.Column{Name: "token", Datatype: "text", IsNotNull: true, IsUnique: true}))
-	table.Append(schemamagic.NewColumn(schemamagic.Column{Name: "expires_at", Datatype: "timestamp", IsNotNull: true, PseudoDatatype: "timestamp with time zone"}))
+	table.Append(schemamagic.NewColumn(schemamagic.Column{Name: "expires_at", Datatype: "timestamp with time zone", IsNotNull: true, PseudoDatatype: "timestamp with time zone"}))
 	table.Append(schemamagic.NewColumn(schemamagic.Column{Name: "ip", Datatype: "text", IsNotNull: true}))
 	table.Append(schemamagic.NewColumn(schemamagic.Column{Name: "active", Datatype: "boolean", DefaultExists: true, DefaultValue: "true"}))
 	table.Append(schemamagic.NewColumn(schemamagic.Column{Name: "timestamp", Datatype: "bigint", DefaultExists: true, DefaultValue: "date_part('epoch'::text, now())::bigint"}))
