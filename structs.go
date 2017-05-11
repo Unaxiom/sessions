@@ -28,8 +28,8 @@ type Session struct {
 	ID int64 `json:"id,omitempty"`
 	// Key stores the string that needs to be encoded/hashed to generate a unique session value
 	Key string `json:"key,omitempty"`
-	// Value stores the computed value using the key
-	Value string `json:"value,omitempty"`
+	// Token stores the computed token using the key
+	Token string `json:"token,omitempty"`
 	// ExpiryIn stores the number of seconds after which this session will expire
 	ExpiryIn int64 `json:"expiry_in,omitempty"`
 	// ExpiresAt stores the timestamp (with full timezone) at which this session will expire

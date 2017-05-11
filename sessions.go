@@ -43,7 +43,7 @@ func Setup(dbParent *pgx.ConnPool, logParent *ulogger.Logger, sessionExpiresInSe
 	for _, session := range allSessions {
 		go func() {
 			<-time.After(time.Second * time.Duration(session.ExpiryIn))
-			go DeleteSession(session.Value)
+			go DeleteSession(session.Token)
 		}()
 	}
 }
@@ -52,7 +52,7 @@ func Setup(dbParent *pgx.ConnPool, logParent *ulogger.Logger, sessionExpiresInSe
 func FetchAllSessions() ([]Session, error) {
 	allSessions := make([]Session, 0)
 	rows, err := db.Query(`
-		SELECT id, key, value, expires_at, ip, timestamp FROM sessions WHERE active = True
+		SELECT id, key, token, expires_at, ip, timestamp FROM sessions WHERE active = True
 	`)
 	defer rows.Close()
 	if err != nil {
@@ -61,7 +61,7 @@ func FetchAllSessions() ([]Session, error) {
 	}
 	for rows.Next() {
 		var session Session
-		rows.Scan(&session.ID, &session.Key, &session.Value, &session.ExpiresAt, &session.IP, &session.Timestamp)
+		rows.Scan(&session.ID, &session.Key, &session.Token, &session.ExpiresAt, &session.IP, &session.Timestamp)
 		session.ExpiryIn = calculateExpiresIn(session.ExpiresAt)
 		allSessions = append(allSessions, session)
 	}
@@ -74,9 +74,9 @@ func NewSession(key string, ipAddress string) (Session, error) {
 	assignedSession.Key = key
 	assignedSession.IP = ipAddress
 
-	// Calculate the session value here
-	assignedSession.Value = calculateHash(assignedSession.Key, assignedSession.IP)
-	// Calculate the ExpiresAt value here
+	// Calculate the session token here
+	assignedSession.Token = calculateHash(assignedSession.Key, assignedSession.IP)
+	// Calculate the ExpiresAt token here
 	assignedSession.ExpiresAt = time.Now().In(timezoneLocation).Add(time.Second * time.Duration(sessionExpiryTime))
 
 	// Insert this into the database here
@@ -88,8 +88,8 @@ func NewSession(key string, ipAddress string) (Session, error) {
 	}
 
 	err = tx.QueryRow(`
-		INSERT INTO sessions (key, value, expires_at, ip) VALUES ($1, $2, $3, $4) RETURNING id, timestamp
-	`, assignedSession.Key, assignedSession.Value, assignedSession.ExpiresAt, assignedSession.IP).Scan(&assignedSession.ID, &assignedSession.Timestamp)
+		INSERT INTO sessions (key, token, expires_at, ip) VALUES ($1, $2, $3, $4) RETURNING id, timestamp
+	`, assignedSession.Key, assignedSession.Token, assignedSession.ExpiresAt, assignedSession.IP).Scan(&assignedSession.ID, &assignedSession.Timestamp)
 
 	if err != nil {
 		log.Errorln("While inserting a new session in the sessions table, error is ", err)
@@ -108,18 +108,18 @@ func NewSession(key string, ipAddress string) (Session, error) {
 	// Set up the delete timer here
 	go func() {
 		<-time.After(time.Second * time.Duration(assignedSession.ExpiryIn))
-		go DeleteSession(assignedSession.Value)
+		go DeleteSession(assignedSession.Token)
 	}()
 
 	return assignedSession, nil
 }
 
-// CheckStatus accepts a session value, and returns the session object, along with an error, if any
-func CheckStatus(sessionValue string) (Session, error) {
+// CheckStatus accepts a session token, and returns the session object, along with an error, if any
+func CheckStatus(sessionToken string) (Session, error) {
 	var session Session
 	err := db.QueryRow(`
-		SELECT id, key, value, expires_at, ip, timestamp FROM sessions WHERE value = $1 AND active = True
-	`, sessionValue).Scan(&session.ID, &session.Key, &session.Value, &session.ExpiresAt, &session.IP, &session.Timestamp)
+		SELECT id, key, token, expires_at, ip, timestamp FROM sessions WHERE token = $1 AND active = True
+	`, sessionToken).Scan(&session.ID, &session.Key, &session.Token, &session.ExpiresAt, &session.IP, &session.Timestamp)
 	if err != nil {
 		return session, err
 	}
@@ -127,14 +127,14 @@ func CheckStatus(sessionValue string) (Session, error) {
 	return session, nil
 }
 
-// DeleteSession deletes the session with the specific sessionValue and returns an error, if any.
-func DeleteSession(sessionValue string) error {
+// DeleteSession deletes the session with the specific sessionToken and returns an error, if any.
+func DeleteSession(sessionToken string) error {
 	tx, _ := db.Begin()
 	defer tx.Rollback()
 
 	_, err := tx.Exec(`
-		UPDATE sessions SET active = False WHERE value = $1
-	`, sessionValue)
+		UPDATE sessions SET active = False WHERE token = $1
+	`, sessionToken)
 	if err != nil {
 		tx.Rollback()
 		log.Errorln("While deleting a session, error is ", err)
