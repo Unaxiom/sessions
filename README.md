@@ -14,6 +14,8 @@ import (
 
 func init() {
     // Set up the database and the logger objects
-    sessions.Setup(dbObject, uloggerObject)
+    sessionExpiryTime := int64(86400)
+    localTimeZone := "UTC"
+    sessions.Setup(dbObject, uloggerObject, sessionExpiryTime, localTimeZone)
 }
 ```
