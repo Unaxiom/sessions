@@ -8,18 +8,33 @@ import (
 	"fmt"
 
 	"github.com/Unaxiom/ulogger"
+	"github.com/apratheek/schemamagic"
 	"github.com/twinj/uuid"
-	"gopkg.in/jackc/pgx.v2"
 )
+
+var globalDatabaseName string
 
 func init() {
 
 }
 
-// Setup accepts a db conn pool, a ulogger instance, number of seconds after which the session expires (if set to 0, default value of 86400 is used), the timezone (if set to "", default timezone - UTC is used), and sets up the required variables. It also starts the expiry timers of existing sessions.
-func Setup(dbParent *pgx.ConnPool, logParent *ulogger.Logger, sessionExpiresInSecs int64, sessionLocalTimezoneName string) {
-	db = dbParent
-	log = logParent
+// Init accepts number of seconds after which the session expires (if set to 0, default value of 86400 is used), the timezone (if set to "", default timezone - UTC is used), and sets up the required variables. It also starts the expiry timers of existing sessions.
+func Init(sessionExpiresInSecs int64, sessionLocalTimezoneName string, applicationName string, orgName string, production bool, dbHost string, dbPort uint16, databaseName string, dbUser string, dbPassword string) error {
+	log = ulogger.New()
+	log.SetLogLevel(ulogger.InfoLevel)
+	log.RemoteAvailable = production
+	log.ApplicationName = applicationName + " sessions"
+	log.OrganizationName = orgName
+	if production {
+		ulogger.RemoteURL = "https://logs.unaxiom.com/newlog"
+	}
+	var err error
+	globalDatabaseName = databaseName
+	db, err = schemamagic.SetupDB(dbHost, dbPort, databaseName, dbUser, dbPassword)
+	if err != nil {
+		return err
+	}
+
 	if sessionExpiresInSecs != 0 {
 		sessionExpiryTime = sessionExpiresInSecs
 	}
@@ -28,7 +43,6 @@ func Setup(dbParent *pgx.ConnPool, logParent *ulogger.Logger, sessionExpiresInSe
 	}
 
 	// Load the time zone here
-	var err error
 	timezoneLocation, err = time.LoadLocation(sessionTimezoneName)
 	if err != nil {
 		log.Errorln("Couldn't load timezone location --> ", sessionTimezoneName, ". Error is ", err, ".")
@@ -39,6 +53,7 @@ func Setup(dbParent *pgx.ConnPool, logParent *ulogger.Logger, sessionExpiresInSe
 	allSessions, err := FetchAllSessions()
 	if err != nil {
 		log.Errorln("While trying to fetch all sessions during Setup, error is ", err)
+		return err
 	}
 
 	// Calculate the expiry timers and delete the sessions accordingly
@@ -48,6 +63,46 @@ func Setup(dbParent *pgx.ConnPool, logParent *ulogger.Logger, sessionExpiresInSe
 			go DeleteSession(session.Token)
 		}()
 	}
+	return nil
+}
+
+// SetupTable accepts all the parameters and creates/updates the Sessions table. Don't call it along with Init(). Init() and SetupTable() should be called separately.
+func SetupTable(applicationName string, orgName string, production bool, dbHost string, dbPort uint16, databaseName string, dbUser string, dbPassword string, defaultSchema string) error {
+	log = ulogger.New()
+	log.SetLogLevel(ulogger.InfoLevel)
+	log.RemoteAvailable = production
+	log.ApplicationName = applicationName + " sessions"
+	log.OrganizationName = orgName
+	if production {
+		ulogger.RemoteURL = "https://logs.unaxiom.com/newlog"
+	}
+	var err error
+	globalDatabaseName = databaseName
+	db, err = schemamagic.SetupDB(dbHost, dbPort, databaseName, dbUser, dbPassword)
+	if err != nil {
+		return err
+	}
+	err = createSessionsTable(defaultSchema)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// createSessionsTable accepts the schema of the database and creates the Sessions table using the database parameters passed during Setup. Setup needs to be called prior. Otherwise, method may crash.
+func createSessionsTable(defaultSchema string) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	table := tableSessions(tx, defaultSchema, globalDatabaseName)
+	table.Begin()
+	commitErr := tx.Commit()
+	if commitErr != nil {
+		tx.Rollback()
+		return commitErr
+	}
+	return nil
 }
 
 // FetchAllSessions returns all the live sessions.
