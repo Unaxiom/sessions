@@ -5,8 +5,8 @@ import (
 	pgx "gopkg.in/jackc/pgx.v2"
 )
 
-// TableSessions creates the Sessions table
-func TableSessions(tx *pgx.Tx, defaultSchema string, database string) *schemamagic.Table {
+// tableSessions creates the Sessions table
+func tableSessions(tx *pgx.Tx, defaultSchema string, database string) *schemamagic.Table {
 	/*
 		CREATE TABLE sessions (
 			id bigserial UNIQUE PRIMARY KEY,
