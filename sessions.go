@@ -3,6 +3,8 @@ package sessions
 import (
 	"time"
 
+	"gopkg.in/jackc/pgx.v2"
+
 	"crypto/sha256"
 
 	"fmt"
@@ -19,7 +21,8 @@ func init() {
 }
 
 // Init accepts number of seconds after which the session expires (if set to 0, default value of 86400 is used), the timezone (if set to "", default timezone - UTC is used), and sets up the required variables. It also starts the expiry timers of existing sessions.
-func Init(sessionExpiresInSecs int64, sessionLocalTimezoneName string, applicationName string, orgName string, production bool, dbHost string, dbPort uint16, databaseName string, dbUser string, dbPassword string) error {
+func Init(sessionExpiresInSecs int64, sessionLocalTimezoneName string, applicationName string, orgName string, production bool, dbHost string, dbPort uint16, databaseName string, dbUser string, dbPassword string) (*Session, error) {
+	sessionObject := new(Session)
 	log = ulogger.New()
 	log.SetLogLevel(ulogger.InfoLevel)
 	log.RemoteAvailable = production
@@ -30,9 +33,9 @@ func Init(sessionExpiresInSecs int64, sessionLocalTimezoneName string, applicati
 	}
 	var err error
 	globalDatabaseName = databaseName
-	db, err = schemamagic.SetupDB(dbHost, dbPort, databaseName, dbUser, dbPassword)
+	sessionObject.db, err = schemamagic.SetupDB(dbHost, dbPort, databaseName, dbUser, dbPassword)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if sessionExpiresInSecs != 0 {
@@ -50,20 +53,20 @@ func Init(sessionExpiresInSecs int64, sessionLocalTimezoneName string, applicati
 	}
 
 	// Fetch all the active sessions here
-	allSessions, err := FetchAllSessions()
+	allSessions, err := sessionObject.FetchAllSessions()
 	if err != nil {
 		log.Errorln("While trying to fetch all sessions during Setup, error is ", err)
-		return err
+		return nil, err
 	}
 
 	// Calculate the expiry timers and delete the sessions accordingly
 	for _, session := range allSessions {
-		go func() {
+		go func(session SessionData) {
 			<-time.After(time.Second * time.Duration(session.ExpiryIn))
-			go DeleteSession(session.Token)
-		}()
+			go sessionObject.DeleteSession(session.Token)
+		}(session)
 	}
-	return nil
+	return sessionObject, nil
 }
 
 // SetupTable accepts all the parameters and creates/updates the Sessions table. Don't call it along with Init(). Init() and SetupTable() should be called separately.
@@ -82,7 +85,7 @@ func SetupTable(applicationName string, orgName string, production bool, dbHost 
 	if err != nil {
 		return err
 	}
-	err = createSessionsTable(defaultSchema)
+	err = createSessionsTable(db, defaultSchema)
 	if err != nil {
 		return err
 	}
@@ -90,7 +93,7 @@ func SetupTable(applicationName string, orgName string, production bool, dbHost 
 }
 
 // createSessionsTable accepts the schema of the database and creates the Sessions table using the database parameters passed during Setup. Setup needs to be called prior. Otherwise, method may crash.
-func createSessionsTable(defaultSchema string) error {
+func createSessionsTable(db *pgx.ConnPool, defaultSchema string) error {
 	tx, err := db.Begin()
 	if err != nil {
 		return err
@@ -106,9 +109,9 @@ func createSessionsTable(defaultSchema string) error {
 }
 
 // FetchAllSessions returns all the live sessions.
-func FetchAllSessions() ([]Session, error) {
-	allSessions := make([]Session, 0)
-	rows, err := db.Query(`
+func (sessionObject *Session) FetchAllSessions() ([]SessionData, error) {
+	allSessions := make([]SessionData, 0)
+	rows, err := sessionObject.db.Query(`
 		SELECT id, key, token, expires_at, ip, timestamp FROM sessions WHERE active = True
 	`)
 	defer rows.Close()
@@ -117,7 +120,7 @@ func FetchAllSessions() ([]Session, error) {
 		return allSessions, err
 	}
 	for rows.Next() {
-		var session Session
+		var session SessionData
 		rows.Scan(&session.ID, &session.Key, &session.Token, &session.ExpiresAt, &session.IP, &session.Timestamp)
 		session.ExpiryIn = calculateExpiresIn(session.ExpiresAt)
 		allSessions = append(allSessions, session)
@@ -126,8 +129,8 @@ func FetchAllSessions() ([]Session, error) {
 }
 
 // FetchSessionData returns the data of the particular session token
-func FetchSessionData(session Session) (Session, error) {
-	err := db.QueryRow(`
+func (sessionObject *Session) FetchSessionData(session SessionData) (SessionData, error) {
+	err := sessionObject.db.QueryRow(`
 		SELECT id, key, token, expires_at, ip, active, timestamp FROM sessions WHERE token = $1
 	`, session.Token).Scan(&session.ID, &session.Key, &session.Token, &session.ExpiresAt, &session.IP, &session.Active, &session.Timestamp)
 	if err != nil {
@@ -138,9 +141,9 @@ func FetchSessionData(session Session) (Session, error) {
 	return session, nil
 }
 
-// NewSession accepts the key to encode, along with the client's IP Address, inserts into the sessions table, sets the delete session timer, and returns a Session struct.
-func NewSession(key string, ipAddress string) (Session, error) {
-	var assignedSession Session
+// NewSession accepts the key to encode, along with the client's IP Address, inserts into the sessions table, sets the delete session timer, and returns a SessionData struct.
+func (sessionObject *Session) NewSession(key string, ipAddress string) (SessionData, error) {
+	var assignedSession SessionData
 	assignedSession.Key = key
 	assignedSession.IP = ipAddress
 
@@ -150,7 +153,7 @@ func NewSession(key string, ipAddress string) (Session, error) {
 	assignedSession.ExpiresAt = time.Now().In(timezoneLocation).Add(time.Second * time.Duration(sessionExpiryTime))
 
 	// Insert this into the database here
-	tx, err := db.Begin()
+	tx, err := sessionObject.db.Begin()
 	defer tx.Rollback()
 	if err != nil {
 		log.Errorln("Couldn't fetch a database connection. Error is --> ", err)
@@ -172,22 +175,22 @@ func NewSession(key string, ipAddress string) (Session, error) {
 		log.Errorln("While inserting into sessions table, error is ", commitErr)
 		return assignedSession, commitErr
 	}
-	// Calculate Session.ExpiresIn from Session.ExpiresAt (after adjusting it to the specified time zone)
+	// Calculate SessionData.ExpiresIn from SessionData.ExpiresAt (after adjusting it to the specified time zone)
 	assignedSession.ExpiryIn = calculateExpiresIn(assignedSession.ExpiresAt)
 
 	// Set up the delete timer here
 	go func() {
 		<-time.After(time.Second * time.Duration(assignedSession.ExpiryIn))
-		go DeleteSession(assignedSession.Token)
+		go sessionObject.DeleteSession(assignedSession.Token)
 	}()
 
 	return assignedSession, nil
 }
 
 // CheckStatus accepts a session token, and returns the session object, along with an error, if any
-func CheckStatus(sessionToken string) (Session, error) {
-	var session Session
-	err := db.QueryRow(`
+func (sessionObject *Session) CheckStatus(sessionToken string) (SessionData, error) {
+	var session SessionData
+	err := sessionObject.db.QueryRow(`
 		SELECT id, key, token, expires_at, ip, timestamp FROM sessions WHERE token = $1 AND active = True
 	`, sessionToken).Scan(&session.ID, &session.Key, &session.Token, &session.ExpiresAt, &session.IP, &session.Timestamp)
 	if err != nil {
@@ -198,8 +201,8 @@ func CheckStatus(sessionToken string) (Session, error) {
 }
 
 // DeleteSession deletes the session with the specific sessionToken and returns an error, if any.
-func DeleteSession(sessionToken string) error {
-	tx, _ := db.Begin()
+func (sessionObject *Session) DeleteSession(sessionToken string) error {
+	tx, _ := sessionObject.db.Begin()
 	defer tx.Rollback()
 
 	_, err := tx.Exec(`

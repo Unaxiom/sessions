@@ -22,8 +22,13 @@ var sessionTimezoneName = "UTC"
 // timezoneLocation stores the time zone w.r.t. the sessionTimeZoneName
 var timezoneLocation *time.Location
 
-// Session stores the parameters in the sessions table
+// Session manages all the sessions
 type Session struct {
+	db *pgx.ConnPool
+}
+
+// SessionData stores the parameters in the sessions table
+type SessionData struct {
 	// ID stores the bigserial (PostgreSQL row id) associated with this session
 	ID int64 `json:"id,omitempty"`
 	// Key stores the string that needs to be encoded/hashed to generate a unique session value
