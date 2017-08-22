@@ -48,7 +48,7 @@ func Init(sessionExpiresInSecs int64, sessionLocalTimezoneName string, applicati
 	// Load the time zone here
 	timezoneLocation, err = time.LoadLocation(sessionTimezoneName)
 	if err != nil {
-		log.Errorln("Couldn't load timezone location --> ", sessionTimezoneName, ". Error is ", err, ".")
+		log.Infoln("Couldn't load timezone location --> ", sessionTimezoneName, ". Error is ", err, ".")
 		timezoneLocation, _ = time.LoadLocation("UTC")
 	}
 
