@@ -83,10 +83,7 @@ func SetupTable(applicationName string, orgName string, production bool, dbHost 
 		return err
 	}
 	err = createSessionsTable(db, databaseName, defaultSchema)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // createSessionsTable accepts the schema of the database and creates the Sessions table using the database parameters passed during Setup. Setup needs to be called prior. Otherwise, method may crash.
