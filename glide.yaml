@@ -1,0 +1,15 @@
+package: github.com/Unaxiom/sessions
+import:
+- package: github.com/Unaxiom/ulogger
+  version: ^1.1.1
+- package: github.com/apratheek/schemamagic
+  version: ^1.1.1
+- package: github.com/twinj/uuid
+  version: ^1.0.0
+- package: gopkg.in/jackc/pgx.v2
+  version: ^3.1.0
+testImport:
+- package: github.com/stretchr/testify
+  version: ^1.2.2
+  subpackages:
+  - require

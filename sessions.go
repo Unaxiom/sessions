@@ -1,20 +1,15 @@
 package sessions
 
 import (
-	"time"
-
-	"gopkg.in/jackc/pgx.v2"
-
 	"crypto/sha256"
-
 	"fmt"
+	"time"
 
 	"github.com/Unaxiom/ulogger"
 	"github.com/apratheek/schemamagic"
 	"github.com/twinj/uuid"
+	"gopkg.in/jackc/pgx.v2"
 )
-
-var globalDatabaseName string
 
 func init() {
 
@@ -32,24 +27,27 @@ func Init(sessionExpiresInSecs int64, sessionLocalTimezoneName string, applicati
 		ulogger.RemoteURL = "https://logs.unaxiom.com/newlog"
 	}
 	var err error
-	globalDatabaseName = databaseName
 	sessionObject.db, err = schemamagic.SetupDB(dbHost, dbPort, databaseName, dbUser, dbPassword)
 	if err != nil {
 		return nil, err
 	}
 
 	if sessionExpiresInSecs != 0 {
-		sessionExpiryTime = sessionExpiresInSecs
+		sessionObject.sessionExpiryTime = sessionExpiresInSecs
+	} else {
+		sessionObject.sessionExpiryTime = int64(86400)
 	}
 	if sessionLocalTimezoneName != "" {
-		sessionTimezoneName = sessionLocalTimezoneName
+		sessionObject.sessionTimezoneName = sessionLocalTimezoneName
+	} else {
+		sessionObject.sessionTimezoneName = "UTC"
 	}
 
 	// Load the time zone here
-	timezoneLocation, err = time.LoadLocation(sessionTimezoneName)
+	sessionObject.timezoneLocation, err = time.LoadLocation(sessionObject.sessionTimezoneName)
 	if err != nil {
-		log.Infoln("Couldn't load timezone location --> ", sessionTimezoneName, ". Error is ", err, ".")
-		timezoneLocation, _ = time.LoadLocation("UTC")
+		log.Infoln("Couldn't load timezone location --> ", sessionObject.sessionTimezoneName, ". Error is ", err, ".")
+		sessionObject.timezoneLocation, _ = time.LoadLocation("UTC")
 	}
 
 	// Fetch all the active sessions here
@@ -80,12 +78,11 @@ func SetupTable(applicationName string, orgName string, production bool, dbHost 
 		ulogger.RemoteURL = "https://logs.unaxiom.com/newlog"
 	}
 	var err error
-	globalDatabaseName = databaseName
 	db, err = schemamagic.SetupDB(dbHost, dbPort, databaseName, dbUser, dbPassword)
 	if err != nil {
 		return err
 	}
-	err = createSessionsTable(db, defaultSchema)
+	err = createSessionsTable(db, databaseName, defaultSchema)
 	if err != nil {
 		return err
 	}
@@ -93,12 +90,12 @@ func SetupTable(applicationName string, orgName string, production bool, dbHost 
 }
 
 // createSessionsTable accepts the schema of the database and creates the Sessions table using the database parameters passed during Setup. Setup needs to be called prior. Otherwise, method may crash.
-func createSessionsTable(db *pgx.ConnPool, defaultSchema string) error {
+func createSessionsTable(db *pgx.ConnPool, databaseName string, defaultSchema string) error {
 	tx, err := db.Begin()
 	if err != nil {
 		return err
 	}
-	table := tableSessions(tx, defaultSchema, globalDatabaseName)
+	table := tableSessions(tx, defaultSchema, databaseName)
 	table.Begin()
 	commitErr := tx.Commit()
 	if commitErr != nil {
@@ -150,7 +147,7 @@ func (sessionObject *Session) NewSession(key string, ipAddress string) (SessionD
 	// Calculate the session token here
 	assignedSession.Token = calculateHash(assignedSession.Key, assignedSession.IP)
 	// Calculate the ExpiresAt token here
-	assignedSession.ExpiresAt = time.Now().In(timezoneLocation).Add(time.Second * time.Duration(sessionExpiryTime))
+	assignedSession.ExpiresAt = time.Now().In(sessionObject.timezoneLocation).Add(time.Second * time.Duration(sessionObject.sessionExpiryTime))
 
 	// Insert this into the database here
 	tx, err := sessionObject.db.Begin()
@@ -177,6 +174,7 @@ func (sessionObject *Session) NewSession(key string, ipAddress string) (SessionD
 	}
 	// Calculate SessionData.ExpiresIn from SessionData.ExpiresAt (after adjusting it to the specified time zone)
 	assignedSession.ExpiryIn = calculateExpiresIn(assignedSession.ExpiresAt)
+	assignedSession.Active = true
 
 	// Set up the delete timer here
 	go func() {
@@ -225,16 +223,6 @@ func (sessionObject *Session) DeleteSession(sessionToken string) error {
 
 // calculateExpiresIn calculates the time after which a session needs to be deleted, from its full-timezone timestamp.
 func calculateExpiresIn(expiresAt time.Time) int64 {
-	// var expiresIn int64
-	// Calculate the current time in the specified timezone
-	// Find the difference between expiredAt and the current time
-	// difference := expiresAt.Sub(time.Now().In(timezoneLocation))
-	// Find the difference in seconds and return the value
-	// return expiresIn
-	// log.Infoln("Expires At timezone is ", expiresAt.Location().String(), " and timezoneLocation is ", timezoneLocation.String())
-	// zone, offset := expiresAt.Zone()
-	// log.Infoln("Zone is ", zone, " and offset is ", offset)
-	// return int64(expiresAt.Sub(time.Now().In(timezoneLocation))) / (1000 * 1000 * 1000)
 	return int64(expiresAt.Sub(time.Now())) / (1000 * 1000 * 1000)
 }
 

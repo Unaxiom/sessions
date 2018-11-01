@@ -13,18 +13,18 @@ var db *pgx.ConnPool
 // log holds the same logger that the parent app uses
 var log *ulogger.Logger
 
-// sessionExpiryTime stores the time after which a session needs to be cleared
-var sessionExpiryTime = int64(86400)
-
-// sessionTimezoneName stores the timezone that needs to be followed
-var sessionTimezoneName = "UTC"
-
-// timezoneLocation stores the time zone w.r.t. the sessionTimeZoneName
-var timezoneLocation *time.Location
-
 // Session manages all the sessions
 type Session struct {
 	db *pgx.ConnPool
+
+	// sessionExpiryTime stores the time after which a session needs to be cleared
+	sessionExpiryTime int64
+
+	// sessionTimezoneName stores the timezone that needs to be followed
+	sessionTimezoneName string
+
+	// timezoneLocation stores the time zone w.r.t. the sessionTimeZoneName
+	timezoneLocation *time.Location
 }
 
 // SessionData stores the parameters in the sessions table
