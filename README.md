@@ -1,16 +1,28 @@
-### Sessions
+# Sessions
+
 Package that will be used across Unaxiom to generate and maintain sessions.
 
-### Installation
+## Installation
+
 `go get -u github.com/Unaxiom/sessions`
 
 ### Usage
-###### To create the sessions table
-```
+
+#### To create the sessions table
+
+```golang
 err := SetupTable(applicationName string, orgName string, production bool, dbHost string, dbPort uint16, databaseName string, dbUser string, dbPassword string, defaultSchema string)
 ```
-###### To start the sessions process
-```
+
+#### Dependencies
+
+1. github.com/apratheek/schemamagic
+2. github.com/twinj/uuid
+3. gopkg.in/jackc/pgx.v2
+
+#### To start the sessions process
+
+```golang
 import (
     "github.com/Unaxiom/sessions"
     "github.com/Unaxiom/ulogger"
