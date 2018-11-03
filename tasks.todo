@@ -2,3 +2,10 @@ Todo:
     ✔ Migrate package level variables into struct level variables @done(01-11-18 17:46)
     ✔ Write tests @done(01-11-18 17:47)
     ✔ Create new release @done(01-11-18 17:47)
+
+v2: 
+    ☐ Write tests
+    ☐ Benchmark the new version
+    ☐ Compare benchmarks with the older version
+    ☐ Update README
+    ☐ Create a v2.0.0
