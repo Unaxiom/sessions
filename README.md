@@ -2,39 +2,38 @@
 
 Package that will be used across Unaxiom to generate and maintain sessions.
 
+## v2
+
+Package has been rewritten using a faster [in-memory DB](https://github.com/tidwall/buntdb). PostgreSQL is no longer required. This version is incompatible with v1.
+
 ## Installation
 
 `go get -u github.com/Unaxiom/sessions`
 
-### Usage
+### Dependencies
 
-#### To create the sessions table
-
-```golang
-err := SetupTable(applicationName string, orgName string, production bool, dbHost string, dbPort uint16, databaseName string, dbUser string, dbPassword string, defaultSchema string)
-```
-
-#### Dependencies
-
-1. github.com/apratheek/schemamagic
+1. github.com/tidwall/buntdb
 2. github.com/twinj/uuid
-3. gopkg.in/jackc/pgx.v2
 
-#### To start the sessions process
+### Import
 
 ```golang
 import (
     "github.com/Unaxiom/sessions"
-    "github.com/Unaxiom/ulogger"
-    "gopkg.in/jackc/pgx.v2"
 )
+```
 
-func init() {
-    // Set up the database and the logger objects
-    sessionExpiryTime := int64(86400)
-    localTimeZone := "UTC"
-    sessionObject, err := sessions.Init(sessionExpiresInSecs int64, sessionLocalTimezoneName string, applicationName string, orgName string, production bool, dbHost string, dbPort uint16, databaseName string, dbUser string, dbPassword string)
-    sessionData, err := sessionObject.NewSession("somekeyhere", "userIPAddress")
-    fmt.Println("Auth Token is ", sessionData.Token)
-}
+#### Usage
+
+```golang
+sessionExpiryTime := int64(86400)
+sessionObject, err := Init("name_of_session", false, sessionExpiryTime)
+sessionData, err := sessionObject.NewSession("somekeyhere", "userIPAddress")
+fmt.Println("Auth Token is ", sessionData.Token)
+
+// Check the status of the token. An error is returned in case the token does not exist. Returns nil otherwise.
+_, err = sessionObject.CheckStatus(sessionData.Token)
+
+// To delete a token
+sessionObject.DeleteSession(sessionData.Token)
 ```

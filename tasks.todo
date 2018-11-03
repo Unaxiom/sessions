@@ -4,8 +4,7 @@ Todo:
     ✔ Create new release @done(01-11-18 17:47)
 
 v2: 
-    ☐ Write tests
-    ☐ Benchmark the new version
-    ☐ Compare benchmarks with the older version
-    ☐ Update README
-    ☐ Create a v2.0.0
+    ✔ Write tests @done(04-11-18 00:15)
+    ✔ Benchmark the new version @done(04-11-18 00:15)
+    ✔ Update README @done(04-11-18 00:28)
+    ✔ Create a v2.0.0 @done(04-11-18 00:28)

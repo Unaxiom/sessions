@@ -14,8 +14,9 @@ import (
 	"github.com/twinj/uuid"
 )
 
-// Init accepts the session expiry time in seconds and other parameters and returns the session object
-func Init(name string, persistOnDisk bool, expiryInSecs int64) (*Session, error) {
+// Init initialises a session object with a name, a bool representing if the corresponding file needs
+// to be saved to disk, and a key expiry time in seconds.
+func Init(name string, persistSessionToDisk bool, expiryInSecs int64) (*Session, error) {
 	sessionObject := new(Session)
 	sessionObject.Name = name
 	if expiryInSecs != 0 {
@@ -30,7 +31,7 @@ func Init(name string, persistOnDisk bool, expiryInSecs int64) (*Session, error)
 	cwd, _ := os.Getwd()
 	os.MkdirAll(filepath.Join(cwd, "sessionsdb"), os.ModePerm)
 
-	if persistOnDisk {
+	if persistSessionToDisk {
 		filename = filepath.Join(cwd, "sessionsdb", sessionObject.Name+".db")
 	} else {
 		filename = ":memory:"
