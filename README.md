@@ -27,7 +27,8 @@ import (
 
 ```golang
 sessionExpiryTime := int64(86400)
-sessionObject, err := Init("name_of_session", false, sessionExpiryTime)
+dbFolder, _ := os.Getwd()
+sessionObject, err := Init("name_of_session", false, sessionExpiryTime, dbFolder)
 sessionData, err := sessionObject.NewSession("somekeyhere", "userIPAddress")
 fmt.Println("Auth Token is ", sessionData.Token)
 

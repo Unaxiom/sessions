@@ -8,3 +8,10 @@ v2:
     ✔ Benchmark the new version @done(04-11-18 00:15)
     ✔ Update README @done(04-11-18 00:28)
     ✔ Create a v2.0.0 @done(04-11-18 00:28)
+
+v2.1: 
+    ☐ Update API to choose between Redis or BuntDB as the storage engine
+    ☐ In Genesis, for testing, choose redis, and for production, choose buntdb
+    ☐ Update tests for this API
+    ☐ Update README
+    ☐ Create v2.1.0

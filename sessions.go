@@ -15,8 +15,8 @@ import (
 )
 
 // Init initialises a session object with a name, a bool representing if the corresponding file needs
-// to be saved to disk, and a key expiry time in seconds.
-func Init(name string, persistSessionToDisk bool, expiryInSecs int64) (*Session, error) {
+// to be saved to disk, a key expiry time in seconds, and the location of the folder where the database file is stored
+func Init(name string, persistSessionToDisk bool, expiryInSecs int64, dbFolderLocation string) (*Session, error) {
 	sessionObject := new(Session)
 	sessionObject.Name = name
 	if expiryInSecs != 0 {
@@ -27,12 +27,10 @@ func Init(name string, persistSessionToDisk bool, expiryInSecs int64) (*Session,
 	var err error
 	var filename = ""
 
-	// Make the directory here
-	cwd, _ := os.Getwd()
-	os.MkdirAll(filepath.Join(cwd, "sessionsdb"), os.ModePerm)
-
 	if persistSessionToDisk {
-		filename = filepath.Join(cwd, "sessionsdb", sessionObject.Name+".db")
+		// Make the directory here
+		os.MkdirAll(filepath.Join(dbFolderLocation, "sessionsdb"), os.ModePerm)
+		filename = filepath.Join(dbFolderLocation, "sessionsdb", sessionObject.Name+".db")
 	} else {
 		filename = ":memory:"
 	}

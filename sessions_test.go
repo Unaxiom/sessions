@@ -1,6 +1,7 @@
 package sessions
 
 import (
+	"os"
 	"testing"
 	"time"
 
@@ -20,7 +21,8 @@ func assertSessDataWithProvidedAttributes(assert *require.Assertions, sess Sessi
 func shortSessionTest(assert *require.Assertions) {
 	// Init a new session with a small timeout
 	shortTimeout := int64(2)
-	shortSession, err := Init("csrf", false, shortTimeout)
+	cwd, _ := os.Getwd()
+	shortSession, err := Init("csrf", false, shortTimeout, cwd)
 	// Assert all the parameters
 	assert.Nil(err)
 	assert.NotNil(shortSession.DB)
@@ -52,7 +54,8 @@ func shortSessionTest(assert *require.Assertions) {
 func longSessionTest(assert *require.Assertions) {
 	// Init a new session with 0 timeout -> and assert that the expiry time is 86400
 	var longTimeout = int64(86400)
-	longSession, err := Init("sessions", true, 0)
+	cwd, _ := os.Getwd()
+	longSession, err := Init("sessions", true, 0, cwd)
 	assert.Nil(err)
 	assert.NotNil(longSession.DB)
 	assert.Equal(longTimeout, longSession.ExpiryTime)
@@ -98,7 +101,8 @@ func BenchmarkShort(b *testing.B) {
 	t := new(testing.T)
 	assert := require.New(t)
 	shortTimeout := int64(2)
-	shortSession, err := Init("csrf", false, shortTimeout)
+	cwd, _ := os.Getwd()
+	shortSession, err := Init("csrf", false, shortTimeout, cwd)
 	assert.Nil(err)
 	for n := 0; n < b.N; n++ {
 		newSess, err := shortSession.NewSession(uuid.NewV4().String(), "127.0.0.1")
@@ -118,7 +122,8 @@ func BenchmarkShortFull(b *testing.B) {
 func BenchmarkLong(b *testing.B) {
 	t := new(testing.T)
 	assert := require.New(t)
-	longSession, err := Init("sessions", true, 0)
+	cwd, _ := os.Getwd()
+	longSession, err := Init("sessions", true, 0, cwd)
 	assert.Nil(err)
 	for n := 0; n < b.N; n++ {
 		var key = uuid.NewV4().String()
