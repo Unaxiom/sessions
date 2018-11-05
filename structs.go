@@ -3,14 +3,22 @@ package sessions
 import (
 	"time"
 
+	"github.com/go-redis/redis"
 	"github.com/tidwall/buntdb"
+)
+
+const (
+	buntStorage  = "buntdb"
+	redisStorage = "redis"
 )
 
 // Session manages all the sessions
 type Session struct {
-	Name       string
-	DB         *buntdb.DB
-	ExpiryTime int64
+	Name          string
+	buntDB        *buntdb.DB
+	redisDB       *redis.Client
+	ExpiryTime    int64
+	StorageEngine string
 }
 
 // SessionData stores the parameters in the sessions table

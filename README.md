@@ -12,8 +12,9 @@ Package has been rewritten using a faster [in-memory DB](https://github.com/tidw
 
 ### Dependencies
 
-1. github.com/tidwall/buntdb
+1. github.com/tidwall/buntdb (for using BuntDB as the backend store)
 2. github.com/twinj/uuid
+3. github.com/go-redis/redis (for using Redis as the backend store)
 
 ### Import
 
@@ -37,4 +38,7 @@ _, err = sessionObject.CheckStatus(sessionData.Token)
 
 // To delete a token
 sessionObject.DeleteSession(sessionData.Token)
+
+// For using Redis as the backend store
+shortRedisDBSession, err := InitRedis("", "", 0, sessionExpiryTime)
 ```
