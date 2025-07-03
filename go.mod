@@ -1,4 +1,4 @@
-module sessions
+module github.com/Unaxiom/sessions
 
 go 1.24.4
 
