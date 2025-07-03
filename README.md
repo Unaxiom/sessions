@@ -30,7 +30,7 @@ import (
 sessionExpiryTime := int64(86400)
 dbFolder, _ := os.Getwd()
 sessionObject, err := Init("name_of_session", false, sessionExpiryTime, dbFolder)
-sessionData, err := sessionObject.NewSession("somekeyhere", "userIPAddress")
+sessionData, err := sessionObject.NewSession("somekeyhere", "userIPAddress", 0)
 fmt.Println("Auth Token is ", sessionData.Token)
 
 // Check the status of the token. An error is returned in case the token does not exist. Returns nil otherwise.

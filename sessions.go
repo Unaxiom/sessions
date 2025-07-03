@@ -72,15 +72,20 @@ func (sessionObject *Session) FetchSessionData(session SessionData) (SessionData
 }
 
 // NewSession accepts the key to encode, along with the client's IP Address, inserts into the sessions table, sets the delete session timer, and returns a SessionData struct.
-func (sessionObject *Session) NewSession(key string, ipAddress string) (SessionData, error) {
+func (sessionObject *Session) NewSession(key string, ipAddress string, optionalExpiryInSeconds uint64) (SessionData, error) {
 	var assignedSession SessionData
 	assignedSession.Key = key
 	assignedSession.IP = ipAddress
 
+	var expiryTime = optionalExpiryInSeconds
+	if expiryTime == 0 {
+		expiryTime = uint64(sessionObject.ExpiryTime)
+	}
+
 	// Calculate the session token here
 	assignedSession.Token = calculateHash(assignedSession.Key, assignedSession.IP)
 	// Calculate the ExpiresAt token here
-	assignedSession.ExpiresAt = time.Now().Add(time.Second * time.Duration(sessionObject.ExpiryTime))
+	assignedSession.ExpiresAt = time.Now().Add(time.Second * time.Duration(expiryTime))
 	assignedSession.Timestamp = time.Now().Unix()
 
 	data, _ := json.Marshal(assignedSession)
@@ -88,7 +93,7 @@ func (sessionObject *Session) NewSession(key string, ipAddress string) (SessionD
 	// Insert this into the database here
 	if sessionObject.StorageEngine == buntStorage {
 		err := sessionObject.buntDB.Update(func(tx *buntdb.Tx) error {
-			_, _, err := tx.Set(assignedSession.Token, string(data), &buntdb.SetOptions{Expires: true, TTL: time.Second * time.Duration(sessionObject.ExpiryTime)})
+			_, _, err := tx.Set(assignedSession.Token, string(data), &buntdb.SetOptions{Expires: true, TTL: time.Second * time.Duration(expiryTime)})
 			return err
 		})
 
@@ -96,7 +101,7 @@ func (sessionObject *Session) NewSession(key string, ipAddress string) (SessionD
 			return assignedSession, err
 		}
 	} else if sessionObject.StorageEngine == redisStorage {
-		err := sessionObject.redisDB.Set(assignedSession.Token, string(data), time.Second*time.Duration(sessionObject.ExpiryTime))
+		err := sessionObject.redisDB.Set(assignedSession.Token, string(data), time.Second*time.Duration(expiryTime))
 		if err.Err() != nil {
 			return assignedSession, err.Err()
 		}

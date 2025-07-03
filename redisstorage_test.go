@@ -19,7 +19,7 @@ func shortRedisDBSessionTest(assert *require.Assertions) {
 
 	// Create a new session
 	var key = uuid.NewV4().String()
-	newSess, err := shortRedisDBSession.NewSession(key, "127.0.0.1")
+	newSess, err := shortRedisDBSession.NewSession(key, "127.0.0.1", 0)
 	assert.Nil(err)
 	// Assert parameters and the fact that the authtoken is still alive
 	assertSessDataWithProvidedAttributes(assert, newSess, key, "127.0.0.1", shortTimeout)
@@ -35,7 +35,7 @@ func shortRedisDBSessionTest(assert *require.Assertions) {
 
 	assert.Nil(shortRedisDBSession.redisDB.Close())
 
-	_, err = shortRedisDBSession.NewSession(key, "127.0.0.1")
+	_, err = shortRedisDBSession.NewSession(key, "127.0.0.1", 0)
 	assert.NotNil(err)
 
 }
@@ -50,7 +50,7 @@ func longRedisDBSessionTest(assert *require.Assertions) {
 
 	// Create new session
 	var key = uuid.NewV4().String()
-	newSess, err := longRedisDBSession.NewSession(key, "127.0.0.1")
+	newSess, err := longRedisDBSession.NewSession(key, "127.0.0.1", 0)
 	assert.Nil(err)
 	// Assert parameters and the fact that the authtoken is still alive
 	assertSessDataWithProvidedAttributes(assert, newSess, key, "127.0.0.1", longTimeout)
@@ -79,10 +79,27 @@ func longRedisDBSessionTest(assert *require.Assertions) {
 	assert.NotNil(err)
 }
 
+func configurableDBSessionTest(assert *require.Assertions) {
+	// InitRedis a new session with 0 timeout -> and assert that the expiry time is 86400
+	var longTimeout = uint64(1000)
+	longRedisDBSession, err := InitRedis("", "", 0, 0)
+	assert.Nil(err)
+	assert.NotNil(longRedisDBSession.redisDB)
+	assert.Equal(uint64(86400), uint64(longRedisDBSession.ExpiryTime))
+
+	// Create new session
+	var key = uuid.NewV4().String()
+	newSess, err := longRedisDBSession.NewSession(key, "127.0.0.1", longTimeout)
+	assert.Nil(err)
+	// Assert parameters and the fact that the authtoken is still alive
+	assertSessDataWithProvidedAttributes(assert, newSess, key, "127.0.0.1", int64(longTimeout))
+}
+
 func TestRedisDBSessions(t *testing.T) {
 	assert := require.New(t)
 	shortRedisDBSessionTest(assert)
 	longRedisDBSessionTest(assert)
+	configurableDBSessionTest(assert)
 }
 
 func BenchmarkRedisDBShort(b *testing.B) {
@@ -92,7 +109,7 @@ func BenchmarkRedisDBShort(b *testing.B) {
 	shortRedisDBSession, err := InitRedis("", "", 0, shortTimeout)
 	assert.Nil(err)
 	for n := 0; n < b.N; n++ {
-		newSess, err := shortRedisDBSession.NewSession(uuid.NewV4().String(), "127.0.0.1")
+		newSess, err := shortRedisDBSession.NewSession(uuid.NewV4().String(), "127.0.0.1", 0)
 		assert.Nil(err)
 		assert.NotZero(len(newSess.Token))
 	}
@@ -113,7 +130,7 @@ func BenchmarkRedisDBLong(b *testing.B) {
 	assert.Nil(err)
 	for n := 0; n < b.N; n++ {
 		var key = uuid.NewV4().String()
-		newSess, err := longRedisDBSession.NewSession(key, "127.0.0.1")
+		newSess, err := longRedisDBSession.NewSession(key, "127.0.0.1", 0)
 		assert.Nil(err)
 		assert.NotZero(len(newSess.Token))
 	}

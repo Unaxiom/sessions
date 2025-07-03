@@ -31,7 +31,7 @@ func shortBuntDBSessionTest(assert *require.Assertions) {
 
 	// Create a new session
 	var key = uuid.NewV4().String()
-	newSess, err := shortBuntDBSession.NewSession(key, "127.0.0.1")
+	newSess, err := shortBuntDBSession.NewSession(key, "127.0.0.1", 0)
 	assert.Nil(err)
 	// Assert parameters and the fact that the authtoken is still alive
 	assertSessDataWithProvidedAttributes(assert, newSess, key, "127.0.0.1", shortTimeout)
@@ -47,7 +47,7 @@ func shortBuntDBSessionTest(assert *require.Assertions) {
 
 	assert.Nil(shortBuntDBSession.buntDB.Close())
 
-	_, err = shortBuntDBSession.NewSession(key, "127.0.0.1")
+	_, err = shortBuntDBSession.NewSession(key, "127.0.0.1", 0)
 	assert.NotNil(err)
 
 }
@@ -63,7 +63,7 @@ func longBuntDBSessionTest(assert *require.Assertions) {
 
 	// Create new session
 	var key = uuid.NewV4().String()
-	newSess, err := longBuntDBSession.NewSession(key, "127.0.0.1")
+	newSess, err := longBuntDBSession.NewSession(key, "127.0.0.1", 0)
 	assert.Nil(err)
 	// Assert parameters and the fact that the authtoken is still alive
 	assertSessDataWithProvidedAttributes(assert, newSess, key, "127.0.0.1", longTimeout)
@@ -106,7 +106,7 @@ func BenchmarkBuntDBShort(b *testing.B) {
 	shortBuntDBSession, err := Init("csrf", false, shortTimeout, cwd)
 	assert.Nil(err)
 	for n := 0; n < b.N; n++ {
-		newSess, err := shortBuntDBSession.NewSession(uuid.NewV4().String(), "127.0.0.1")
+		newSess, err := shortBuntDBSession.NewSession(uuid.NewV4().String(), "127.0.0.1", 0)
 		assert.Nil(err)
 		assert.NotZero(len(newSess.Token))
 	}
@@ -128,7 +128,7 @@ func BenchmarkBuntDBLong(b *testing.B) {
 	assert.Nil(err)
 	for n := 0; n < b.N; n++ {
 		var key = uuid.NewV4().String()
-		newSess, err := longBuntDBSession.NewSession(key, "127.0.0.1")
+		newSess, err := longBuntDBSession.NewSession(key, "127.0.0.1", 0)
 		assert.Nil(err)
 		assert.NotZero(len(newSess.Token))
 	}
